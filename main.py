@@ -1,7 +1,10 @@
 import streamlit as st
 st.title('나의 첫 앱 서비스 만들기')
 a=st.text_input( '이름을 입력하세요')
-b=st.selectbox('좋아하는 음식을 선택하세요!', ['마라탕', '피자', '볶음밥','없음'])
+b=st.selectbox('좋아하는 음식을 선택하세요!', ['마라탕', '피자', '볶음밥','양식'])
 if st.button('인사말 생성'):
   st.write(a+'님, 안녕하세요!')
   st.info(b+'를 좋아하시는군요!')
+  st.warning('저도 좋아하는 음식이네요!')
+  st.error('반가워요'!)
+  st.balloons()
