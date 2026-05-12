@@ -1,0 +1,5 @@
+import stremlit at st
+st.title('나의 첫 앱 서비스)
+st.text_input( '이름을 입력하세요')
+st.selectbox('좋아하는 음식을 선택하세요!', ['마라탕', '피자', '볶음밥'])
+st.
