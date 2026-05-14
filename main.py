@@ -8,4 +8,3 @@ if st.button('인사말 생성'):
   st.warning('저도 좋아하는 음식이네요!')
   st.error('반가워요!')
   st.balloons()
-  st. bubbless()
