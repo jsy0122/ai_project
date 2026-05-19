@@ -1,4 +1,3 @@
-```python id="mbti_sports_match"
 import streamlit as st
 
 # 페이지 설정
@@ -115,4 +114,3 @@ if st.button("운동 추천 받기 🚀"):
 
 # 하단 문구
 st.caption("📌 재미로 보는 MBTI 운동 추천이야 😎 가볍게 즐겨줘!")
-```
