@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 import platform
 
 # -----------------------------
@@ -16,7 +15,6 @@ st.title("📊 서울시의 인구통계")
 
 # -----------------------------
 # 한글 폰트 설정
-# Streamlit Cloud 한글 깨짐 방지
 # -----------------------------
 if platform.system() == 'Windows':
     plt.rc('font', family='Malgun Gothic')
@@ -25,7 +23,7 @@ elif platform.system() == 'Darwin':
     plt.rc('font', family='AppleGothic')
 
 else:
-    # Streamlit Cloud(Linux)
+    # Streamlit Cloud Linux
     plt.rc('font', family='NanumGothic')
 
 plt.rcParams['axes.unicode_minus'] = False
@@ -66,25 +64,23 @@ for col in age_columns:
         .astype(int)
     )
 
-# -----------------------------
-# 행정구 선택
-# -----------------------------
+# ==================================================
+# 1️⃣ 행정구 선택 그래프
+# ==================================================
+
+st.subheader("🏙️ 행정구별 연령대 인구 그래프")
+
 district = st.selectbox(
-    "🏙️ 행정구를 선택하세요",
+    "행정구를 선택하세요",
     df["행정구역"]
 )
 
-# -----------------------------
-# 선택 데이터 추출
-# -----------------------------
 selected = df[df["행정구역"] == district]
 
 ages = age_columns
 population = selected.iloc[0, 1:]
 
-# -----------------------------
 # 그래프 생성
-# -----------------------------
 fig, ax = plt.subplots(figsize=(11, 5))
 
 # 배경색
@@ -105,8 +101,7 @@ ax.plot(
 ax.set_title(
     "서울시의 인구통계",
     fontsize=20,
-    fontweight='bold',
-    pad=20
+    fontweight='bold'
 )
 
 # 축 이름
@@ -114,14 +109,71 @@ ax.set_xlabel("연령대", fontsize=13)
 ax.set_ylabel("인구수", fontsize=13)
 
 # 격자
-ax.grid(
-    True,
-    linestyle='--',
-    alpha=0.5
-)
+ax.grid(True, linestyle='--', alpha=0.5)
 
-# x축 글자 회전
 plt.xticks(rotation=20)
 
-# Streamlit 출력
+# 출력
 st.pyplot(fig)
+
+# ==================================================
+# 2️⃣ 연령대별 인구 많은 행정구 찾기
+# ==================================================
+
+st.divider()
+
+st.subheader("🔍 연령대별 인구가 가장 많은 행정구")
+
+selected_age = st.selectbox(
+    "연령대를 선택하세요",
+    age_columns
+)
+
+# 가장 많은 행정구 찾기
+max_idx = df[selected_age].idxmax()
+
+top_district = df.loc[max_idx, "행정구역"]
+top_population = df.loc[max_idx, selected_age]
+
+# 결과 출력
+st.success(
+    f"🎉 {selected_age} 인구가 가장 많은 지역은 "
+    f"👉 {top_district} 이고 "
+    f"인구수는 {top_population:,}명 입니다!"
+)
+
+# ==================================================
+# 3️⃣ 연령대별 TOP5 그래프
+# ==================================================
+
+top5 = df.sort_values(by=selected_age, ascending=False).head(5)
+
+fig2, ax2 = plt.subplots(figsize=(10, 5))
+
+# 배경색
+fig2.patch.set_facecolor("#EAF7FF")
+ax2.set_facecolor("#EAF7FF")
+
+# 막대 그래프
+ax2.bar(
+    top5["행정구역"],
+    top5[selected_age],
+    color='darkblue'
+)
+
+# 제목
+ax2.set_title(
+    f"{selected_age} 인구 TOP 5 행정구",
+    fontsize=18,
+    fontweight='bold'
+)
+
+# 축 이름
+ax2.set_xlabel("행정구역")
+ax2.set_ylabel("인구수")
+
+# 격자
+ax2.grid(True, linestyle='--', alpha=0.3)
+
+# 출력
+st.pyplot(fig2)
