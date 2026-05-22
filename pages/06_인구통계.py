@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
+import platform
 
 # -----------------------------
 # 페이지 설정
@@ -14,13 +14,18 @@ st.set_page_config(
 st.title("📊 서울시의 인구통계")
 
 # -----------------------------
-# 한글 폰트 직접 등록
+# 한글 폰트 설정
 # -----------------------------
-font_path = "NanumGothic.ttf"
+if platform.system() == 'Windows':
+    plt.rc('font', family='Malgun Gothic')
 
-fontprop = fm.FontProperties(fname=font_path)
+elif platform.system() == 'Darwin':
+    plt.rc('font', family='AppleGothic')
 
-plt.rcParams['font.family'] = fontprop.get_name()
+else:
+    # Streamlit Cloud Linux
+    plt.rc('font', family='NanumGothic')
+
 plt.rcParams['axes.unicode_minus'] = False
 
 # -----------------------------
@@ -96,38 +101,23 @@ ax.plot(
 ax.set_title(
     "서울시의 인구통계",
     fontsize=20,
-    fontweight='bold',
-    fontproperties=fontprop
+    fontweight='bold'
 )
 
 # 축 이름
-ax.set_xlabel(
-    "연령대",
-    fontsize=13,
-    fontproperties=fontprop
-)
-
-ax.set_ylabel(
-    "인구수",
-    fontsize=13,
-    fontproperties=fontprop
-)
-
-# x축 한글 적용
-ax.set_xticklabels(
-    ages,
-    fontproperties=fontprop,
-    rotation=20
-)
+ax.set_xlabel("연령대", fontsize=13)
+ax.set_ylabel("인구수", fontsize=13)
 
 # 격자
 ax.grid(True, linestyle='--', alpha=0.5)
+
+plt.xticks(rotation=20)
 
 # 출력
 st.pyplot(fig)
 
 # ==================================================
-# 2️⃣ 연령대별 인구 많은 행정구
+# 2️⃣ 연령대별 인구 많은 행정구 찾기
 # ==================================================
 
 st.divider()
@@ -139,7 +129,7 @@ selected_age = st.selectbox(
     age_columns
 )
 
-# 가장 많은 지역 찾기
+# 가장 많은 행정구 찾기
 max_idx = df[selected_age].idxmax()
 
 top_district = df.loc[max_idx, "행정구역"]
@@ -153,7 +143,7 @@ st.success(
 )
 
 # ==================================================
-# 3️⃣ TOP5 그래프
+# 3️⃣ 연령대별 TOP5 그래프
 # ==================================================
 
 top5 = df.sort_values(by=selected_age, ascending=False).head(5)
@@ -175,26 +165,12 @@ ax2.bar(
 ax2.set_title(
     f"{selected_age} 인구 TOP 5 행정구",
     fontsize=18,
-    fontweight='bold',
-    fontproperties=fontprop
+    fontweight='bold'
 )
 
 # 축 이름
-ax2.set_xlabel(
-    "행정구역",
-    fontproperties=fontprop
-)
-
-ax2.set_ylabel(
-    "인구수",
-    fontproperties=fontprop
-)
-
-# x축 한글 적용
-ax2.set_xticklabels(
-    top5["행정구역"],
-    fontproperties=fontprop
-)
+ax2.set_xlabel("행정구역")
+ax2.set_ylabel("인구수")
 
 # 격자
 ax2.grid(True, linestyle='--', alpha=0.3)
