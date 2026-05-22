@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+import platform
 
 # -----------------------------
 # 페이지 설정
@@ -15,8 +16,18 @@ st.title("📊 서울시의 인구통계")
 
 # -----------------------------
 # 한글 폰트 설정
+# Streamlit Cloud 한글 깨짐 방지
 # -----------------------------
-plt.rcParams['font.family'] = 'Malgun Gothic'
+if platform.system() == 'Windows':
+    plt.rc('font', family='Malgun Gothic')
+
+elif platform.system() == 'Darwin':
+    plt.rc('font', family='AppleGothic')
+
+else:
+    # Streamlit Cloud(Linux)
+    plt.rc('font', family='NanumGothic')
+
 plt.rcParams['axes.unicode_minus'] = False
 
 # -----------------------------
@@ -25,7 +36,7 @@ plt.rcParams['axes.unicode_minus'] = False
 df = pd.read_csv("population.csv", encoding="euc-kr")
 
 # -----------------------------
-# 컬럼 이름 정리
+# 컬럼 이름 변경
 # -----------------------------
 df.columns = [
     "행정구역",
@@ -64,7 +75,7 @@ district = st.selectbox(
 )
 
 # -----------------------------
-# 선택한 데이터 추출
+# 선택 데이터 추출
 # -----------------------------
 selected = df[df["행정구역"] == district]
 
@@ -74,9 +85,9 @@ population = selected.iloc[0, 1:]
 # -----------------------------
 # 그래프 생성
 # -----------------------------
-fig, ax = plt.subplots(figsize=(10, 5))
+fig, ax = plt.subplots(figsize=(11, 5))
 
-# 그래프 바탕색
+# 배경색
 fig.patch.set_facecolor("#EAF7FF")
 ax.set_facecolor("#EAF7FF")
 
@@ -85,6 +96,7 @@ ax.plot(
     ages,
     population,
     marker='o',
+    markersize=8,
     linewidth=3,
     color='darkblue'
 )
@@ -92,19 +104,24 @@ ax.plot(
 # 제목
 ax.set_title(
     "서울시의 인구통계",
-    fontsize=18,
-    fontweight='bold'
+    fontsize=20,
+    fontweight='bold',
+    pad=20
 )
 
 # 축 이름
-ax.set_xlabel("연령대", fontsize=12)
-ax.set_ylabel("인구수", fontsize=12)
-
-# 눈금 회전
-plt.xticks(rotation=20)
+ax.set_xlabel("연령대", fontsize=13)
+ax.set_ylabel("인구수", fontsize=13)
 
 # 격자
-ax.grid(True, linestyle='--', alpha=0.5)
+ax.grid(
+    True,
+    linestyle='--',
+    alpha=0.5
+)
+
+# x축 글자 회전
+plt.xticks(rotation=20)
 
 # Streamlit 출력
 st.pyplot(fig)
