@@ -5,3 +5,7 @@ pandas
 matplotlib
 numpy
 plotly
+[server]
+headless = true
+[browser]
+gatherUsageStats = false
