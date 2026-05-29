@@ -5,16 +5,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # -----------------------------------
-# 마이너스 깨짐 방지
+# 한글 설정
 # -----------------------------------
+# Streamlit Cloud에서도 대부분 정상 출력됨
+plt.rcParams['font.family'] = 'sans-serif'
+
+plt.rcParams['font.sans-serif'] = [
+    'Malgun Gothic',
+    'AppleGothic',
+    'NanumGothic',
+    'DejaVu Sans'
+]
+
 plt.rcParams['axes.unicode_minus'] = False
 
 # -----------------------------------
 # 제목
 # -----------------------------------
-st.title("🌡️ Temperature Analysis")
+st.title("🌡️ 날짜별 기온 분석")
 
-st.write("Select month and day!")
+st.write("월과 일을 선택하면 연도별 기온 변화를 볼 수 있어!")
 
 # -----------------------------------
 # 데이터 불러오기
@@ -24,43 +34,43 @@ df = pd.read_csv(
     encoding='cp949'
 )
 
-# 컬럼명 변경
+# 컬럼 이름 변경
 df.columns = [
-    'date',
-    'station',
-    'avg_temp',
-    'min_temp',
-    'max_temp'
+    '날짜',
+    '지점',
+    '평균기온',
+    '최저기온',
+    '최고기온'
 ]
 
 # -----------------------------------
 # 날짜 변환
 # -----------------------------------
-df['date'] = pd.to_datetime(
-    df['date'],
+df['날짜'] = pd.to_datetime(
+    df['날짜'],
     errors='coerce'
 )
 
-# 오류 제거
-df = df.dropna(subset=['date'])
+# 날짜 오류 제거
+df = df.dropna(subset=['날짜'])
 
 # -----------------------------------
-# 연/월/일 생성
+# 연도 / 월 / 일 생성
 # -----------------------------------
-df['year'] = df['date'].dt.year
-df['month'] = df['date'].dt.month
-df['day'] = df['date'].dt.day
+df['연도'] = df['날짜'].dt.year
+df['월'] = df['날짜'].dt.month
+df['일'] = df['날짜'].dt.day
 
 # -----------------------------------
 # 사용자 선택
 # -----------------------------------
 month = st.selectbox(
-    "Month",
+    "📅 월 선택",
     range(1, 13)
 )
 
 day = st.selectbox(
-    "Day",
+    "📌 일 선택",
     range(1, 32)
 )
 
@@ -68,17 +78,17 @@ day = st.selectbox(
 # 데이터 필터링
 # -----------------------------------
 filtered = df[
-    (df['month'] == month) &
-    (df['day'] == day)
+    (df['월'] == month) &
+    (df['일'] == day)
 ]
 
-# 결측 제거
+# 결측값 제거
 filtered = filtered.dropna(
-    subset=['max_temp', 'min_temp']
+    subset=['최고기온', '최저기온']
 )
 
 # -----------------------------------
-# 그래프
+# 그래프 출력
 # -----------------------------------
 if not filtered.empty:
 
@@ -88,36 +98,36 @@ if not filtered.empty:
 
     # 최고기온
     ax.plot(
-        filtered['year'],
-        filtered['max_temp'],
+        filtered['연도'],
+        filtered['최고기온'],
         color='red',
         linewidth=2,
-        label='Max Temp'
+        label='최고기온'
     )
 
     # 최저기온
     ax.plot(
-        filtered['year'],
-        filtered['min_temp'],
+        filtered['연도'],
+        filtered['최저기온'],
         color='blue',
         linewidth=2,
-        label='Min Temp'
+        label='최저기온'
     )
 
     # 제목
     ax.set_title(
-        f"Temperature Analysis ({month}/{day})",
+        f"{month}월 {day}일 날짜별 기온 분석",
         fontsize=20
     )
 
-    # 축
+    # 축 이름
     ax.set_xlabel(
-        "Year",
+        "연도",
         fontsize=14
     )
 
     ax.set_ylabel(
-        "Temperature (°C)",
+        "온도(℃)",
         fontsize=14
     )
 
@@ -137,4 +147,4 @@ if not filtered.empty:
     st.pyplot(fig)
 
 else:
-    st.warning("No data!")
+    st.warning("해당 날짜 데이터가 없어!")
