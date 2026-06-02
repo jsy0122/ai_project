@@ -17,12 +17,12 @@ st.set_page_config(
 def load_data():
     try:
         return pd.read_csv(
-            "인천광역시_반려동물_관광지.csv",
+           인천광역시_반려동물 동반 관광지 정보 리스트_20260119(1).csv,
             encoding="cp949"
         )
     except:
         return pd.read_csv(
-            "인천광역시_반려동물_관광지.csv",
+            인천광역시_반려동물 동반 관광지 정보 리스트_20260119(1).csv,
             encoding="euc-kr"
         )
 
