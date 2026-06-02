@@ -1,149 +1,139 @@
 import streamlit as st
 import pandas as pd
+import folium
+from streamlit_folium import st_folium
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 
-# ---------------------------------
-# 페이지 설정
-# ---------------------------------
 st.set_page_config(
-    page_title="🐾 반려동물 관광지 찾기",
-    page_icon="🐶",
+    page_title="🐶 인천 반려동물 동반 관광지",
+    page_icon="🐾",
     layout="wide"
 )
 
-st.title("🐾 인천 반려동물 동반 관광지")
-st.markdown(
-    """
-    반려동물과 함께 갈 수 있는 관광지를 찾아보자! 🐶🐱
+st.title("🐶 인천 반려동물 동반 관광지 지도")
+st.markdown("반려동물과 함께 갈 수 있는 인천 관광지를 찾아보자!")
 
-    ✅ 지역 선택  
-    ✅ 시설 선택  
-    ✅ 상세 정보 확인
-    """
+uploaded_file = st.file_uploader(
+    "CSV 파일 업로드",
+    type=["csv"]
 )
 
-# ---------------------------------
-# CSV 불러오기
-# ---------------------------------
-@st.cache_data
-def load_data():
+if uploaded_file is not None:
 
-    file_name = "인천광역시_반려동물 동반 관광지 정보 리스트_20260119.csv"
+    try:
+        df = pd.read_csv(uploaded_file, encoding="cp949")
+    except:
+        df = pd.read_csv(uploaded_file, encoding="euc-kr")
 
-    encodings = [
-        "cp949",
-        "euc-kr",
-        "utf-8-sig",
-        "utf-8"
-    ]
+    st.success(f"총 {len(df)}개의 관광지 데이터 로드 완료!")
 
-    for enc in encodings:
+    # 컬럼명 확인
+    st.subheader("📋 데이터 미리보기")
+    st.dataframe(df.head())
+
+    region_col = df.columns[0]
+    type_col = df.columns[1]
+    name_col = df.columns[2]
+    address_col = df.columns[3]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        selected_region = st.selectbox(
+            "지역 선택",
+            ["전체"] + sorted(df[region_col].dropna().unique().tolist())
+        )
+
+    with col2:
+        selected_type = st.selectbox(
+            "관광지 유형",
+            ["전체"] + sorted(df[type_col].dropna().unique().tolist())
+        )
+
+    filtered = df.copy()
+
+    if selected_region != "전체":
+        filtered = filtered[
+            filtered[region_col] == selected_region
+        ]
+
+    if selected_type != "전체":
+        filtered = filtered[
+            filtered[type_col] == selected_type
+        ]
+
+    st.write(f"검색 결과: {len(filtered)}개")
+
+    geolocator = Nominatim(user_agent="pet_trip")
+    geocode = RateLimiter(
+        geolocator.geocode,
+        min_delay_seconds=1
+    )
+
+    m = folium.Map(
+        location=[37.4563, 126.7052],
+        zoom_start=10
+    )
+
+    progress = st.progress(0)
+
+    for idx, row in filtered.iterrows():
+
         try:
-            return pd.read_csv(file_name, encoding=enc)
+            location = geocode(str(row[address_col]))
+
+            if location:
+
+                popup_text = f"""
+                <b>{row[name_col]}</b><br>
+                유형 : {row[type_col]}<br>
+                주소 : {row[address_col]}
+                """
+
+                folium.Marker(
+                    [location.latitude, location.longitude],
+                    popup=folium.Popup(
+                        popup_text,
+                        max_width=300
+                    ),
+                    tooltip=row[name_col]
+                ).add_to(m)
+
         except:
             pass
 
-    return None
+        progress.progress(
+            min(
+                (idx + 1) / len(filtered),
+                1.0
+            )
+        )
 
-df = load_data()
+    st.subheader("🗺️ 관광지 지도")
 
-if df is None:
-    st.error("❌ CSV 파일을 읽을 수 없습니다.")
-    st.stop()
+    st_folium(
+        m,
+        width=1200,
+        height=700
+    )
 
-# ---------------------------------
-# 컬럼 자동 찾기
-# ---------------------------------
+    st.subheader("📍 관광지 목록")
 
-def find_column(keyword_list):
-    for col in df.columns:
-        for keyword in keyword_list:
-            if keyword in col:
-                return col
-    return None
+    place = st.selectbox(
+        "관광지 선택",
+        filtered[name_col].tolist()
+    )
 
-지역컬럼 = find_column(["지역"])
-시설컬럼 = find_column(["관광지명", "업체명", "시설명", "상호명", "명"])
-주소컬럼 = find_column(["주소"])
-주차컬럼 = find_column(["주차"])
-공간컬럼 = find_column(["공간"])
+    selected = filtered[
+        filtered[name_col] == place
+    ].iloc[0]
 
-if 지역컬럼 is None or 시설컬럼 is None:
-    st.error("❌ 지역 또는 시설 컬럼을 찾을 수 없습니다.")
-    st.write(df.columns.tolist())
-    st.stop()
+    st.markdown(f"## 🐾 {selected[name_col]}")
 
-# ---------------------------------
-# 지역 선택
-# ---------------------------------
+    for col in filtered.columns:
+        value = selected[col]
+        st.write(f"**{col}** : {value}")
 
-지역목록 = ["강화군", "중구"]
-
-선택지역 = st.selectbox(
-    "🏙️ 지역을 선택해줘!",
-    지역목록
-)
-
-지역데이터 = df[df[지역컬럼].astype(str).str.contains(선택지역, na=False)]
-
-if len(지역데이터) == 0:
-    st.warning("😢 해당 지역 데이터가 없어!")
-    st.stop()
-
-# ---------------------------------
-# 시설 선택
-# ---------------------------------
-
-시설목록 = sorted(
-    지역데이터[시설컬럼]
-    .astype(str)
-    .dropna()
-    .unique()
-)
-
-선택시설 = st.selectbox(
-    "🐶 어떤 시설이 궁금해?",
-    시설목록
-)
-
-시설정보 = 지역데이터[
-    지역데이터[시설컬럼].astype(str) == 선택시설
-].iloc[0]
-
-st.divider()
-
-st.subheader(f"📍 {선택시설}")
-
-# ---------------------------------
-# 주요 정보
-# ---------------------------------
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    주소 = 시설정보[주소컬럼] if 주소컬럼 else "정보 없음"
-    st.metric("📍 위치", str(주소))
-
-with col2:
-    주차 = 시설정보[주차컬럼] if 주차컬럼 else "정보 없음"
-    st.metric("🚗 주차", str(주차))
-
-with col3:
-    공간 = 시설정보[공간컬럼] if 공간컬럼 else "정보 없음"
-    st.metric("🏠 실내/실외", str(공간))
-
-# ---------------------------------
-# 상세정보
-# ---------------------------------
-
-st.divider()
-st.subheader("📋 시설 상세정보")
-
-for col in df.columns:
-
-    value = 시설정보[col]
-
-    if pd.notna(value) and str(value).strip() != "":
-        st.write(f"**{col}**")
-        st.write(str(value))
-
-st.success("🐾 즐거운 반려동물 여행 되세요!")
+else:
+    st.info("CSV 파일을 업로드해주세요.")
