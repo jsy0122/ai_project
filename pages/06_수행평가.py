@@ -1,174 +1,187 @@
 import streamlit as st
 import pandas as pd
+import folium
 
-# -------------------------
-# 페이지 설정
-# -------------------------
+from pathlib import Path
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
+from streamlit_folium import st_folium
+
 st.set_page_config(
-    page_title="🐶 인천 반려동물 관광지",
+    page_title="🐶 반려동물 관광지",
     page_icon="🐾",
     layout="wide"
 )
 
-# -------------------------
-# 데이터 불러오기
-# -------------------------
+# -------------------
+# 데이터 읽기
+# -------------------
 @st.cache_data
 def load_data():
+
+    BASE_DIR = Path(__file__).resolve().parent
+
+    csv_path = (
+        BASE_DIR /
+        "인천광역시_반려동물 동반 관광지 정보 리스트_20260119(1).csv"
+    )
+
     try:
         return pd.read_csv(
-           인천광역시_반려동물 동반 관광지 정보 리스트_20260119(1).csv,
+            csv_path,
             encoding="cp949"
         )
     except:
         return pd.read_csv(
-            인천광역시_반려동물 동반 관광지 정보 리스트_20260119(1).csv,
+            csv_path,
             encoding="euc-kr"
         )
 
 df = load_data()
 
-# -------------------------
+# -------------------
 # 제목
-# -------------------------
+# -------------------
 st.title("🐶 인천 반려동물 동반 관광지")
-st.write("반려동물과 함께 방문할 수 있는 관광지를 찾아보자!")
 
-# -------------------------
-# 통계
-# -------------------------
-c1, c2, c3 = st.columns(3)
+st.write(
+    "이용시설을 선택하면 해당 관광지가 지도에 표시됩니다."
+)
 
-with c1:
-    st.metric("관광지 수", len(df))
-
-with c2:
-    st.metric("지역 수", df["지역"].nunique())
-
-with c3:
-    st.metric("관광지 유형", df["소구분"].nunique())
-
-st.divider()
-
-# -------------------------
-# 지역 선택
-# -------------------------
-region = st.selectbox(
-    "🏙️ 지역 선택",
-    ["전체"] + sorted(df["지역"].dropna().unique())
+# -------------------
+# 시설 종류 선택
+# -------------------
+facility = st.selectbox(
+    "🏷️ 이용시설 선택",
+    ["전체"] +
+    sorted(
+        df["소구분"]
+        .dropna()
+        .unique()
+        .tolist()
+    )
 )
 
 filtered = df.copy()
 
-if region != "전체":
+if facility != "전체":
     filtered = filtered[
-        filtered["지역"] == region
+        filtered["소구분"] == facility
     ]
 
-# -------------------------
-# 유형 선택
-# -------------------------
-category = st.selectbox(
-    "🏷️ 관광지 유형",
-    ["전체"] + sorted(filtered["소구분"].dropna().unique())
+# -------------------
+# 좌표 변환
+# -------------------
+@st.cache_data
+def get_coordinates(addresses):
+
+    geolocator = Nominatim(
+        user_agent="pet_trip"
+    )
+
+    geocode = RateLimiter(
+        geolocator.geocode,
+        min_delay_seconds=1
+    )
+
+    coords = []
+
+    for address in addresses:
+
+        try:
+            location = geocode(str(address))
+
+            if location:
+                coords.append(
+                    (
+                        location.latitude,
+                        location.longitude
+                    )
+                )
+            else:
+                coords.append(
+                    (None, None)
+                )
+
+        except:
+            coords.append(
+                (None, None)
+            )
+
+    return coords
+
+coords = get_coordinates(
+    filtered["주소"].tolist()
 )
 
-if category != "전체":
-    filtered = filtered[
-        filtered["소구분"] == category
-    ]
+filtered["위도"] = [
+    c[0] for c in coords
+]
 
-# -------------------------
-# 시설 선택
-# -------------------------
+filtered["경도"] = [
+    c[1] for c in coords
+]
+
+# -------------------
+# 지도
+# -------------------
+m = folium.Map(
+    location=[37.4563, 126.7052],
+    zoom_start=10
+)
+
+for _, row in filtered.iterrows():
+
+    if pd.notna(row["위도"]):
+
+        folium.Marker(
+            location=[
+                row["위도"],
+                row["경도"]
+            ],
+            popup=f"""
+            <b>{row['상호']}</b><br>
+            {row['주소']}
+            """,
+            tooltip=row["상호"]
+        ).add_to(m)
+
+st_folium(
+    m,
+    width=1200,
+    height=600
+)
+
+# -------------------
+# 관광지 선택
+# -------------------
+st.subheader("📍 관광지 정보")
+
 place = st.selectbox(
-    "📍 관광지 선택",
-    sorted(filtered["상호"].dropna().unique())
+    "관광지 선택",
+    filtered["상호"]
 )
 
 selected = filtered[
     filtered["상호"] == place
 ].iloc[0]
 
-st.divider()
-
-# -------------------------
-# 상세 정보
-# -------------------------
-st.subheader(f"🐾 {selected['상호']}")
-
 st.info(
-    f"📍 위치\n\n{selected['주소']}"
+    f"""
+📍 주소
+
+{selected['주소']}
+"""
 )
 
-col1, col2 = st.columns(2)
-
-with col1:
-
-    st.write("### ⏰ 이용 정보")
-
-    st.write(
-        f"**이용시간** : {selected.get('이용시간', '-')}"
-    )
-
-    st.write(
-        f"**휴무일** : {selected.get('휴무', '-')}"
-    )
-
-    st.write(
-        f"**이용료** : {selected.get('이용료', '-')}"
-    )
-
-with col2:
-
-    st.write("### 🐶 반려동물 정보")
-
-    st.write(
-        f"**이용 가능 공간** : {selected.get('반려동물 동행시 이용 가능 공간(실내_실외)', '-')}"
-    )
-
-    st.write(
-        f"**입장 제한사항** : {selected.get('입장 가능 반려동물 제한사항', '-')}"
-    )
-
-    st.write(
-        f"**주차 여부** : {selected.get('주차', '-')}"
-    )
-
-# -------------------------
-# 서비스 정보
-# -------------------------
-st.write("### 🎁 반려동물 서비스")
-
-service = selected.get(
-    "반려동물용 메뉴 및 서비스 시설 내용",
-    "-"
+st.write(
+    f"⏰ 이용시간 : {selected['이용시간']}"
 )
 
-if pd.isna(service):
-    service = "제공 정보 없음"
-
-st.write(service)
-
-# -------------------------
-# 특이사항
-# -------------------------
-st.write("### 📝 특이사항")
-
-special = selected.get(
-    "기타 특이사항",
-    "-"
+st.write(
+    f"🚗 주차 : {selected['주차']}"
 )
 
-if pd.isna(special):
-    special = "등록된 정보 없음"
-
-st.write(special)
-
-# -------------------------
-# 주소 복사
-# -------------------------
-st.code(
-    selected["주소"],
-    language=None
+st.write(
+    f"🐶 제한사항 : {selected['입장 가능 반려동물 제한사항']}"
 )
